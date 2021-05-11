@@ -39,6 +39,9 @@ spec:
               AcceptanceRequired:
                 description: Whether to require manual acceptance of consumer requests
                 type: boolean
+              EndpointServiceName:
+                description: Name for VPC Endpoint Service
+                type: string
               PrivateDnsName:
                 description: Private DNS Name to configure (Optional)
                 type: string
@@ -52,6 +55,7 @@ spec:
                 description: Tags for VPC Endpoint Service
                 type: string
             required:
+            - EndpointServiceName
             - SvcName
             - SvcNamespace
             type: object

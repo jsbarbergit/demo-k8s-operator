@@ -40,6 +40,8 @@ type VPCESpec struct {
 	PrivateDnsName string `json:"PrivateDnsName,omitempty"`
 	// Tags for VPC Endpoint Service
 	Tags string `json:"Tags,omitempty"`
+	// Name for VPC Endpoint Service
+	EndpointServiceName string `json:"EndpointServiceName"`
 }
 
 // VPCEStatus defines the observed state of VPCE

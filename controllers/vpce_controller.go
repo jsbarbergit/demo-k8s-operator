@@ -19,6 +19,7 @@ package controllers
 import (
 	"context"
 	"errors"
+	"strings"
 
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -27,6 +28,12 @@ import (
 
 	awsresourcev1 "jsbarber.net/vpce/api/v1"
 	corev1 "k8s.io/api/core/v1"
+
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/ec2"
+	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
+	elbv2 "github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2"
+	"github.com/aws/aws-sdk-go/aws"
 )
 
 // VPCEReconciler reconciles a VPCE object
@@ -56,25 +63,14 @@ func (r *VPCEReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	log := r.Log.WithValues("vpce", req.NamespacedName)
 
 	if err := r.Get(ctx, req.NamespacedName, &vpce); err != nil {
-		log.Info("Resource: " + vpce.Name + " removed")
+		log.Info("Resource removed")
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
-	log.Info("found vpce: " + vpce.Name)
-	for key, value := range vpce.Labels {
-		log.Info("Labels: " + key + ": " + value)
-	}
-	log.Info("The Service we're looking for which has NLB details is: " + vpce.Spec.SvcNamespace + "/" + vpce.Spec.SvcName)
-
+	log.Info("Managing existing VPCE Resource: " + vpce.Name)
+	log.Info("Searching for Service: " + vpce.Spec.SvcNamespace + "/" + vpce.Spec.SvcName)
 	// r provides an instantiated k8s client - no need to create a new one
 	k8sclient := r.Client
-	// svcs := &corev1.ServiceList{}
-	// _ = k8sclient.List(context.Background(), svcs)
-	// for _, svc := range svcs.Items {
-	// 	log.Info("Found SERVICE: " + svc.Name)
-	// 	for key, label := range svc.ObjectMeta.Labels {
-	// 		log.Info("Label: " + key + ": " + label)
-	// 	}
-	// }
+
 	svc := &corev1.Service{}
 	err := k8sclient.Get(context.Background(), client.ObjectKey{
 		Namespace: vpce.Spec.SvcNamespace,
@@ -116,14 +112,64 @@ func (r *VPCEReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	}
 	log.Info("Service: " + vpce.Spec.SvcName + " has an assigned NLB with Hostname: " + nlbFQDN)
 
-	// // Load the Shared AWS Configuration (~/.aws/config)
-	// cfg, err := config.LoadDefaultConfig(context.TODO())
-	// if err != nil {
-	// 	log.Error(err, "Failed to load aws creds")
-	// 	return ctrl.Result{}, nil
-	// }
+	// Extract the NLB resource name, which is the hostname part of the FQDN
+	// FQDN should be in the form: <UniqueHostname-UUID>.elb.<REGION>.amazonaws.com
+	_nlbHostnameParts := strings.SplitAfter(nlbFQDN, "-")
+	if len(_nlbHostnameParts) < 2 {
+		log.Error(errors.New("InvalidNLBFQDN"), "Failed to parse NLB FQDN. Got: "+nlbFQDN)
+		return ctrl.Result{}, nil
+	}
+	nlbHostname := strings.Replace(_nlbHostnameParts[0], "-", "", -1)
+	log.Info("Fetching ARN for NLB: " + nlbHostname)
+
+	// Load the Shared AWS Configuration (~/.aws/config)
+	// TODO detect and use IRSA token when running in K8S
+	cfg, err := config.LoadDefaultConfig(context.TODO())
+	if err != nil {
+		log.Error(err, "Failed to load aws creds")
+		return ctrl.Result{}, nil
+	}
 	// // Create an Amazon S3 service client
-	// client := s3.NewFromConfig(cfg)
+	elbv2client := elbv2.NewFromConfig(cfg)
+	params := &elbv2.DescribeLoadBalancersInput{
+		Names: []string{
+			nlbHostname,
+		},
+	}
+	nlbDetailsList, err := elbv2client.DescribeLoadBalancers(context.TODO(), params)
+	if err != nil {
+		log.Error(err, "Failed to describe nlb")
+		return ctrl.Result{}, nil
+	}
+
+	nlbARN := *aws.String(*nlbDetailsList.LoadBalancers[0].LoadBalancerArn)
+	log.Info("Got NLB ARN: " + nlbARN)
+
+	// Check for existing VPCE Service Config
+	ec2client := ec2.NewFromConfig(cfg)
+	vpceServiceConfigParams := &ec2.DescribeVpcEndpointServiceConfigurationsInput{
+		Filters: []types.Filter{
+			{
+				Name:   aws.String("tag:Name"),
+				Values: []string{vpce.Spec.EndpointServiceName},
+			},
+		},
+	}
+
+	vpceServiceConfigs, err := ec2client.DescribeVpcEndpointServiceConfigurations(context.TODO(), vpceServiceConfigParams)
+	if len(vpceServiceConfigs.ServiceConfigurations) > 0 {
+		svcId := *aws.String(*vpceServiceConfigs.ServiceConfigurations[0].ServiceId)
+		svcStatus := *aws.String(string(vpceServiceConfigs.ServiceConfigurations[0].ServiceState))
+		log.Info("Existing VPC Service Endpoint with matching Name found: Name: " + vpce.Spec.EndpointServiceName + ", ID: " + svcId + ", Status: " + svcStatus + ". No Action Needed")
+		return ctrl.Result{}, nil
+	}
+
+	// for _, v := range vpceServiceConfigs.ServiceConfigurations {
+	// 	println("got v: " + *aws.String(*v.ServiceId))
+	// }
+
+	log.Info("No existing VPC Endpoint Service named: " + vpce.Spec.EndpointServiceName + " found. Creating...")
+	// TODO Add the code to create the Endpoint Service here
 
 	return ctrl.Result{}, nil
 }

@@ -16,3 +16,5 @@ spec:
   PrivateDnsName: ""
   # Comma seperate list of Tags for VPC Endpoint Service
   Tags: "Name=vpce-demo"
+  # VPC Endpoint Service Name
+  EndpointServiceName: "LokiGateway"
