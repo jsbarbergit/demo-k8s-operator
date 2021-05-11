@@ -34,6 +34,12 @@ type VPCESpec struct {
 	SvcName string `json:"SvcName"`
 	// Namespace where Service resides
 	SvcNamespace string `json:"SvcNamespace"`
+	// Whether to require manual acceptance of consumer requests
+	AcceptanceRequired bool `json:"AcceptanceRequired,omitempty"`
+	// Private DNS Name to configure (Optional)
+	PrivateDnsName string `json:"PrivateDnsName,omitempty"`
+	// Tags for VPC Endpoint Service
+	Tags string `json:"Tags,omitempty"`
 }
 
 // VPCEStatus defines the observed state of VPCE

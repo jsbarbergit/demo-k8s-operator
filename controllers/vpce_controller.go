@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"context"
+	"errors"
 
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -83,9 +84,46 @@ func (r *VPCEReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		log.Error(err, "Failed to find Service: "+vpce.Spec.SvcName)
 		return ctrl.Result{}, nil
 	}
-	for k, v := range svc.Annotations {
-		log.Info("Service Annotations:  " + k + ": " + v)
+
+	// Validate the Service is the correct type
+	if svc.Spec.Type != "LoadBalancer" {
+		log.Error(errors.New("InvalidServiceType"), "Service : "+vpce.Spec.SvcName+" is not of type NLB. Got: "+string(svc.Spec.Type))
+		return ctrl.Result{}, nil
 	}
+
+	// Validate Annotations
+	for k, v := range svc.Annotations {
+		if k == "service.beta.kubernetes.io/aws-load-balancer-internal" {
+			if v != "true" {
+				log.Error(errors.New("InvalidServiceAnnotation"), "Service : "+vpce.Spec.SvcName+" does not use an internal NLB. Got: "+v)
+				return ctrl.Result{}, nil
+			}
+		}
+		if k == "service.beta.kubernetes.io/aws-load-balancer-type" {
+			if v != "nlb" {
+				log.Error(errors.New("InvalidServiceAnnotation"), "Service : "+vpce.Spec.SvcName+" does not use an NLB. Got: "+v)
+				return ctrl.Result{}, nil
+			}
+		}
+	}
+
+	// Get the NLB fqdn
+	// TODO handle resource creation polling for new resources
+	nlbFQDN := svc.Status.LoadBalancer.Ingress[0].Hostname
+	if len(nlbFQDN) <= 0 {
+		log.Error(errors.New("InvalidNLBStatus"), "Service : "+vpce.Spec.SvcName+"'s NLB does not have a Hostname. Got: "+nlbFQDN)
+		return ctrl.Result{}, nil
+	}
+	log.Info("Service: " + vpce.Spec.SvcName + " has an assigned NLB with Hostname: " + nlbFQDN)
+
+	// // Load the Shared AWS Configuration (~/.aws/config)
+	// cfg, err := config.LoadDefaultConfig(context.TODO())
+	// if err != nil {
+	// 	log.Error(err, "Failed to load aws creds")
+	// 	return ctrl.Result{}, nil
+	// }
+	// // Create an Amazon S3 service client
+	// client := s3.NewFromConfig(cfg)
 
 	return ctrl.Result{}, nil
 }

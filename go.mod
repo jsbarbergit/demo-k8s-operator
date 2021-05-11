@@ -3,6 +3,10 @@ module jsbarber.net/vpce
 go 1.15
 
 require (
+	github.com/aws/aws-sdk-go v1.38.37
+	github.com/aws/aws-sdk-go-v2 v1.4.0
+	github.com/aws/aws-sdk-go-v2/config v1.1.7
+	github.com/aws/aws-sdk-go-v2/service/s3 v1.6.0
 	github.com/ericchiang/k8s v1.2.0 // indirect
 	github.com/go-logr/logr v0.3.0
 	github.com/google/martian v2.1.0+incompatible

@@ -6,5 +6,13 @@ metadata:
     test: hello_world
     another: label
 spec:
-  SvcName: "kube-dns"
-  SvcNamespace: "kube-system"
+  # LoadBalancer Type Service name to fetch NLB Details from 
+  SvcName: "loki-distributed-gateway"
+  # Namespace where Service is created
+  SvcNamespace: "loki"
+  # Whether to require manual acceptance of consumer requests
+  AcceptanceRequired: true
+  # Private DNS Name to configure (Optional)
+  PrivateDnsName: ""
+  # Comma seperate list of Tags for VPC Endpoint Service
+  Tags: "Name=vpce-demo"
