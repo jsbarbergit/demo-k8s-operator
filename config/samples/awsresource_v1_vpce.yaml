@@ -1,0 +1,10 @@
+apiVersion: awsresource.jsbarber.net/v1
+kind: VPCE
+metadata:
+  name: vpce-sample
+  labels:
+    test: hello_world
+    another: label
+spec:
+  SvcName: "kube-dns"
+  SvcNamespace: "kube-system"

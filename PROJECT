@@ -1,0 +1,16 @@
+domain: jsbarber.net
+layout:
+- go.kubebuilder.io/v3
+projectName: vpce
+repo: jsbarber.net/vpce
+resources:
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: jsbarber.net
+  group: awsresource
+  kind: VPCE
+  path: jsbarber.net/vpce/api/v1
+  version: v1
+version: "3"

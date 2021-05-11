@@ -1,0 +1,24 @@
+# permissions for end users to edit vpces.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: vpce-editor-role
+rules:
+- apiGroups:
+  - awsresource.jsbarber.net
+  resources:
+  - vpces
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - awsresource.jsbarber.net
+  resources:
+  - vpces/status
+  verbs:
+  - get
