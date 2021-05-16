@@ -61,6 +61,14 @@ spec:
             type: object
           status:
             description: VPCEStatus defines the observed state of VPCE
+            properties:
+              NlbArn:
+                description: 'INSERT ADDITIONAL STATUS FIELD - define observed state
+                  of cluster Important: Run "make" to regenerate code after modifying
+                  this file'
+                type: string
+              VpceEndpointServiceId:
+                type: string
             type: object
         type: object
     served: true

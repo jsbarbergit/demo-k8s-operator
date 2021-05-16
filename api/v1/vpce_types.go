@@ -48,6 +48,8 @@ type VPCESpec struct {
 type VPCEStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
+	NlbArn                string `json:"NlbArn,omitempty"`
+	VpceEndpointServiceId string `json:"VpceEndpointServiceId,omitempty"`
 }
 
 //+kubebuilder:object:root=true

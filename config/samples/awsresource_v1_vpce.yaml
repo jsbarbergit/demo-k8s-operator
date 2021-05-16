@@ -1,20 +1,45 @@
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled: "true"
+    service.beta.kubernetes.io/aws-load-balancer-internal: "true"
+    service.beta.kubernetes.io/aws-load-balancer-subnets: subnet-0caf61f0f534858d6,subnet-0bad3e474a954a71e,subnet-04b783abbe1a9f687
+    service.beta.kubernetes.io/aws-load-balancer-type: nlb
+  # finalizers:
+  # - service.kubernetes.io/load-balancer-cleanup
+  labels:
+    vpce-demo: "true"
+  name: vpce-demo
+spec:
+  externalTrafficPolicy: Cluster
+  ports:
+  - name: http
+    port: 80
+    protocol: TCP
+    targetPort: http
+  selector:
+    app: vpce-demo
+  sessionAffinity: None
+  type: LoadBalancer
+---
 apiVersion: awsresource.jsbarber.net/v1
 kind: VPCE
 metadata:
-  name: vpce-sample
+  name: vpce-demo
   labels:
     test: hello_world
-    another: label
+    version: "v0.1"
 spec:
   # LoadBalancer Type Service name to fetch NLB Details from 
-  SvcName: "loki-distributed-gateway"
+  SvcName: "vpce-demo"
   # Namespace where Service is created
-  SvcNamespace: "loki"
+  SvcNamespace: "default"
   # Whether to require manual acceptance of consumer requests
   AcceptanceRequired: true
   # Private DNS Name to configure (Optional)
   PrivateDnsName: ""
-  # Comma seperate list of Tags for VPC Endpoint Service
-  Tags: "Name=vpce-demo"
+  # Comma seperate list of Tags for VPC Endpoint Service (e.g. Key1=Value,Key2=Value)
+  Tags: "Name=vpce-demo,Service=vpce-demo"
   # VPC Endpoint Service Name
-  EndpointServiceName: "LokiGateway"
+  EndpointServiceName: "VPCEK8SOperatorDemo"
